@@ -17,9 +17,6 @@ graph = {"x1": ["a", "b", "c"],"x2": ["a", "b", "c"], "x3": ["a", "b", "c"], "x4
 '''
 neural_net = NeuralNet(neurons, graph)
 
-for neuron in ["c1", "c2", "c3", "c4", "c5", "c6", "c7","c8"]:
-    neural_net.forward_prop(neural_net.neurons[neuron])
-
 
 # teaching
 test = [{"input": {"x1": 1, "x2": 0, "x3": 0, "x4": 0, "x5": 0, "x6": 0, "x7": 0, "x8": 0},
@@ -29,12 +26,10 @@ test = [{"input": {"x1": 1, "x2": 0, "x3": 0, "x4": 0, "x5": 0, "x6": 0, "x7": 0
         {"input": {"x1": 1, "x2": 1, "x3": 1, "x4": 1, "x5": 1, "x6": 1, "x7": 1, "x8": 1},
         "output": {"c1": 1, "c2": 1, "c3": 1, "c4": 1, "c5": 1, "c6": 1, "c7": 1, "c8": 1}}]
 
-for i in range(60000):
+for i in range(150000):
     ran = random.choice(test)
-    neural_net.fill_up(ran["input"])
+    # neural_net.fill_up(ran["input"])
     neural_net.learn_v2(ran["input"], ran["output"])
 
-neural_net.print_vertexes()
 
-neural_net.print_vertexes()
 

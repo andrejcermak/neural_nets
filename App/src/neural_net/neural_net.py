@@ -1,3 +1,10 @@
+"""
+Script containing basic fundamentals of neural nets, implements them as graph with neurons as nodes.
+Uses sigmoid function to calculate probabilities. learn_v2 is function, that implements self learning from input and
+desired output.
+"""
+
+
 import random
 import numpy as np
 
@@ -26,7 +33,7 @@ class Neuron:
 
 class NeuralNet:
     def __init__(self,in_neurons, in_graph ):
-        # init neural net
+        """Init net, create neurons, sort them out by layers and init random weights."""
         self.neurons = {}
         self.layers = []
         self.error = 0
@@ -46,7 +53,7 @@ class NeuralNet:
         # labeling neuron as input, hidden or final
         for name, node in self.neurons.iteritems():
             if node.fromm == []:
-                self.num_layers(node, 0)
+                self.__num_layers__(node, 0)
                 node.is_input = True
             else:
                 if node.to == []:
@@ -55,7 +62,14 @@ class NeuralNet:
                 else:
                     node.is_hidden = True
 
-    def num_layers(self, neuron, num):
+    def __str__(self):
+        """Function to print all vertexes of graph."""
+        for name, neuron in self.neurons.iteritems():
+            for neib, w in zip(neuron.to, neuron.weights):
+                print name, "to", neib.name, "with w:", w.value, " with actual val: ", neib.actual_return
+
+    def __num_layers__(self, neuron, num):
+        """Private function that numbers layers, starting with 0 as input node."""
         neuron.layer = num
 
         if len(self.layers) <= num:
@@ -65,56 +79,51 @@ class NeuralNet:
 
         for neib in neuron.to:
             if neib.layer == -1:
+                self.__num_layers__(neib, num + 1)
 
-                self.num_layers(neib, num + 1)
-
-    def nonlin(self, x):
+    def __nonlin__(self, x):
+        """Returns sigmoid f(x)e(0,1)"""
         return 1 / (1 + np.exp(-x))
 
     def test_run(self, neuron, input):
+        """Test function, returns output for given neuron and input."""
         if not neuron.is_input:
             sum = 0
             for i in range(len(neuron.fromm)):
                 # print "name", neuron.fromm[i].name
                 sum += self.test_run(neuron.fromm[i], input) * neuron.weights_from[i].value
-
             # print neuron.name, sum
-            neuron.test = self.nonlin(sum)
+            neuron.test = self.__nonlin__(sum)
         else:
             neuron.test = input[neuron.name]
         return neuron.test
 
-    # calculates return values for all neurons
     def fill_up(self, input):
+        """Calculates return values for all neuron.s"""
         for name, neuron in self.neurons.iteritems():
             if neuron.is_input:
                 neuron.actual_return = input[name]
 
         for name, neuron in self.neurons.iteritems():
             if neuron.is_final and not neuron.is_calculated:
-                self.forward_prop(neuron)
+                self.__forward_prop__(neuron)
 
-    # helper function for fill up (is recursive)
-    def forward_prop(self, neuron):
+    def __forward_prop__(self, neuron):
+        """helper function for fill up (is recursive)"""
         if not neuron.is_input:
             sum = 0
             for i in range(len(neuron.fromm)):
                 if neuron.fromm[i].is_calculated:
                     sum += neuron.fromm[i].actual_return * neuron.weights_from[i].value
                 else:
-                    sum += self.forward_prop(neuron.fromm[i]) * neuron.weights_from[i].value
+                    sum += self.__forward_prop__(neuron.fromm[i]) * neuron.weights_from[i].value
             neuron.is_calculated = True
-            neuron.actual_return = self.nonlin(sum)
+            neuron.actual_return = self.__nonlin__(sum)
         return neuron.actual_return
 
-    def print_vertexes(self):
-        for name, neuron in self.neurons.iteritems():
-            for neib, w in zip(neuron.to, neuron.weights):
-                print name, "to", neib.name, "with w:", w.value, " with actual val: ", neib.actual_return
-
-
-    def change_weight(self, neuron, delta):
-        for weight, neib in zip(final.weights, final.fromm):
+    def __change_weight__(self, neuron, delta):
+        print "aaaaaa"
+        for weight, neib in zip(final.weights, neuron.fromm):
             weight.value += delta*neib.actual_return
 
     def learn_v2(self, input, output):
@@ -148,4 +157,4 @@ class NeuralNet:
                     error[-1] += weight.value*delta
             for er, final in zip(error, self.layers[i]):
                 delta = er*final.actual_return*(1-final.actual_return)
-                self.change_weight(delta, final)
+                self.__change_weight__(delta, final)
