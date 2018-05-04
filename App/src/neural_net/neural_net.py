@@ -13,6 +13,7 @@ class Neuron:
         self.weights_from = []
         self.to = []
         self.fromm = []
+        self.layer = -1
         self.actual_return = 0
         self.desired_return = 0
         self.delta = 0.5
@@ -20,13 +21,15 @@ class Neuron:
         self.is_input = False
         self.is_hidden = False
         self.is_final = False
+        self.is_calculated = False
 
 
 class NeuralNet:
     def __init__(self,in_neurons, in_graph ):
         # init neural net
         self.neurons = {}
-
+        self.layers = []
+        self.error = 0
         for n in in_neurons:
             neuron = Neuron(name = n)
             self.neurons[n] = neuron
@@ -43,45 +46,30 @@ class NeuralNet:
         # labeling neuron as input, hidden or final
         for name, node in self.neurons.iteritems():
             if node.fromm == []:
+                self.num_layers(node, 0)
                 node.is_input = True
             else:
                 if node.to == []:
+
                     node.is_final = True
                 else:
                     node.is_hidden = True
 
+    def num_layers(self, neuron, num):
+        neuron.layer = num
+
+        if len(self.layers) <= num:
+            self.layers.append([neuron])
+        else:
+            self.layers[num].append(neuron)
+
+        for neib in neuron.to:
+            if neib.layer == -1:
+
+                self.num_layers(neib, num + 1)
+
     def nonlin(self, x):
         return 1 / (1 + np.exp(-x))
-
-    def learn(self, neuron, input, output,r):
-
-        if neuron.is_input:
-            neuron.actual_return = input[neuron.name]
-            neuron.delta = input[neuron.name]
-        ''''''
-        for i in range(len(neuron.to)):
-            change = r*neuron.actual_return*self.learn(neuron.to[i], input, output, r)
-            neuron.weights[i].value += change
-
-        if neuron.is_final:
-            neuron.desired_return = output[neuron.name]
-            # l2_error
-            err = self.nonlin(neuron.desired_return - neuron.actual_return)
-            # l2_delta
-            neuron.delta = err*neuron.actual_return * (1-neuron.actual_return)
-            for w, fromm in zip(neuron.weights_from, neuron.fromm):
-                w.value += fromm.actual_return * neuron.delta
-            return neuron.delta
-
-        if neuron.is_hidden:
-            sum = 0
-            for next, weight in zip(neuron.to, neuron.weights):
-                sum += weight*next.delta
-            neuron.delta = neuron.actual_return*(1-neuron.actual_return)*sum
-
-            for w, fromm in zip(neuron.weights_from, neuron.fromm):
-                w.value += fromm.actual_return * neuron.delta
-            return neuron.delta
 
     def test_run(self, neuron, input):
         if not neuron.is_input:
@@ -96,27 +84,26 @@ class NeuralNet:
             neuron.test = input[neuron.name]
         return neuron.test
 
+    # calculates return values for all neurons
     def fill_up(self, input):
         for name, neuron in self.neurons.iteritems():
             if neuron.is_input:
                 neuron.actual_return = input[name]
 
         for name, neuron in self.neurons.iteritems():
-            if neuron.is_final:
+            if neuron.is_final and not neuron.is_calculated:
                 self.forward_prop(neuron)
-                break
-        for name, neuron in self.neurons.iteritems():
-            if neuron.is_final:
-                sum = 0
-                for w, fromm in zip(neuron.weights_from, neuron.fromm):
-                    sum += self.nonlin(w.value * fromm.actual_return)
-                neuron.actual_return = sum/8
 
+    # helper function for fill up (is recursive)
     def forward_prop(self, neuron):
         if not neuron.is_input:
             sum = 0
             for i in range(len(neuron.fromm)):
-                sum += self.forward_prop(neuron.fromm[i]) * neuron.weights_from[i].value
+                if neuron.fromm[i].is_calculated:
+                    sum += neuron.fromm[i].actual_return * neuron.weights_from[i].value
+                else:
+                    sum += self.forward_prop(neuron.fromm[i]) * neuron.weights_from[i].value
+            neuron.is_calculated = True
             neuron.actual_return = self.nonlin(sum)
         return neuron.actual_return
 
@@ -126,20 +113,39 @@ class NeuralNet:
                 print name, "to", neib.name, "with w:", w.value, " with actual val: ", neib.actual_return
 
 
-    def learn_simple(self, neuron, input, output):
+    def change_weight(self, neuron, delta):
+        for weight, neib in zip(final.weights, final.fromm):
+            weight.value += delta*neib.actual_return
+
+    def learn_v2(self, input, output):
+
         for name, val in input.iteritems():
             self.neurons[name].actual_return = val
         for name, val in output.iteritems():
             self.neurons[name].desired_return = val
 
-        l1 = 0
-        # np.dot(l0,syn0)
-        for neib, wei in zip(neuron.fromm, neuron.weights_from):
-            l1 += wei.value * neib.actual_return
-        # = nonlin(np.dot(l0,syn0))
-        l1 = self.nonlin(l1)
-        l1_error = neuron.desired_return - l1
-        # print "error rate ", abs(error)
-        l1_delta = l1_error * l1 * (1 - l1)
-        for neib, wei in zip(neuron.fromm, neuron.weights_from):
-            wei.value += l1_delta*neib.actual_return
+        for name, node in self.neurons.iteritems():
+            node.is_calculated = False
+
+        # Feed forward through layers
+        self.fill_up(input)
+        delta = 0
+        for final in self.layers[-1]:
+            # how much did we miss the target value?
+            error = final.desired_return - final.actual_return
+            self.error += error
+            # in what direction is the target value?
+            # were we really sure? if so, don't change too much.
+            delta = error * final.actual_return * (1 - final.actual_return)
+            for weight, neib in zip(final.weights_from, final.fromm):
+                weight.value += delta*neib.actual_return
+
+        for i in range(len(self.layers)-1,0):
+            error = []
+            for final in self.layers[i]:
+                error.append(0)
+                for weight in final.weights:
+                    error[-1] += weight.value*delta
+            for er, final in zip(error, self.layers[i]):
+                delta = er*final.actual_return*(1-final.actual_return)
+                self.change_weight(delta, final)

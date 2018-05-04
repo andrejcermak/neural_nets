@@ -29,11 +29,18 @@ neural_net = NeuralNet(neurons, graph)
 neural_net.print_vertexes()
 print neural_net.test_run(neural_net.neurons["a"],test[0]["input"])
 
+'''
+for i in range(100000):
+    t = random.choice(test)
+    neural_net.fill_up(t["input"])
+    neural_net.learn_simple(neural_net.neurons["a"], t["input"], t["output"])
+'''
+
 # neural_net.print_vertexes()
 for i in range(10000):
     for t in test:
         neural_net.fill_up(t["input"])
-        neural_net.learn_simple(neural_net.neurons["a"], t["input"], t["output"])
+        neural_net.learn_v2(t["input"], t["output"])
 
 neural_net.print_vertexes()
 x = neural_net.test_run(neural_net.neurons["a"],test[0]["input"])
